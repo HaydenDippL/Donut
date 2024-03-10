@@ -30,10 +30,10 @@ struct coord3D {
     }
 
     void normalize() {
-        double magnitude = x * x + y * y + z * z;
-        x = x / magnitude;
-        y = y / magnitude;
-        z = z / magnitude;
+        double magnitude = sqrt(x * x + y * y + z * z);
+        x /= magnitude;
+        y /= magnitude;
+        z /= magnitude;
     }
 };
 
@@ -51,49 +51,96 @@ coord3D vector_intersects_donut(coord3D& loc, coord3D& dir) {
     // x = loc.x + dir.x * t
     // y = loc.y + dir.y * t
     // z = loc.z + dir.z * t
-
     static double jump = 0.1;
     static double jump_jump = 0.01;
-    
-    // the intersection of the vector with the bounds tours
-    double t_x1 = -R / (loc.x + dir.x);
-    double t_x2 = R / (loc.x + dir.x);
-    double t_y1 = -R / (loc.y + dir.y);
-    double t_y2 = R / (loc.y + dir.y);
-    double t_z1 = -R / (loc.z + dir.z);
-    double t_z2 = R / (loc.z + dir.z);
-    double t = min(min(min(t_x1, t_x2), min(t_y1, t_y2)), min(t_z1, t_z2));
-    double t_max = max(max(max(t_x1, t_x2), min(t_y1, t_y2)), min(t_z1, t_z2));
 
-    while (t < t_max && !point_inside_donut({loc.x + dir.x * t, loc.y + dir.y * t, loc.z + dir.z * t})) {
+    double t1 = numeric_limits<double>::infinity(), t2 = numeric_limits<double>::infinity();
+
+    static auto min2 = [](double t, double& t1, double& t2) {
+        if (t < t1) {
+            t2 = t1;
+            t1 = t;
+        } else if (t < t2) {
+            t2 = t;
+        }
+    };
+
+    if (dir.x != 0) {
+        min2((R - loc.x) / dir.x, t1, t2);
+        min2((-R - loc.x) / dir.x, t1, t2);
+    } if (dir.y != 0) {
+        min2((R - loc.y) / dir.y, t1, t2);
+        min2((-R - loc.y) / dir.y, t1, t2);
+    } if (dir.z != 0) {
+        min2((r - loc.z) / dir.z, t1, t2);
+        min2((-r - loc.z) / dir.z, t1, t2);
+    }
+
+    double t = t1;
+
+    while (t < t2 && !point_inside_donut({loc.x + dir.x * t, loc.y + dir.y * t, loc.z + dir.z * t})) {
         t += jump;
-    } if (t >= t_max) {
+    } if (t >= t2) {
         return {numeric_limits<double>::infinity(), numeric_limits<double>::infinity(), numeric_limits<double>::infinity()};
     } while (point_inside_donut({loc.x + dir.x * t, loc.y + dir.y * t, loc.z + dir.z * t})) {
         t -= jump_jump;
-    } 
-    
-    // estimate theta and phi and estimate x, y, z from those estimations
+    }
     
     return {loc.x + dir.x * t, loc.y + dir.y * t, loc.z + dir.z * t};
 }
 
 double distance(coord3D& a, coord3D& b) {
-    return sqrt(a.x * b.x + a.y * b.y + a.z * b.z);
+    return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2) + pow(a.z - b.z, 2));
 }
 
 // https://web.cs.ucdavis.edu/~amenta/s12/findnorm.pdf
 coord3D get_normal(coord3D& point) {
     // estimate theta and phi
+    static double R2 = R * R;
+    static double _2PI = 2 * M_PI;
+    static double _3_over_2_PI = 3 * M_PI_2;
+    double phi = atan2(point.y, point.x);
+    double theta = asin(point.z / r);
+    bool upper = point.z > 0;
+    bool right = point.x * point.x + point.y * point.y > R2;
+    if (point.z == 0.0 && right) {
+        theta = 0;
+    } else if (point.z == r) {
+        theta = M_PI_2;
+    } else if (point.z == 0.0 && !right) {
+        theta = M_PI;
+    } else if (point.z == -r) {
+        theta = _3_over_2_PI;
+    } else if (upper && right) {
+        theta = theta;
+    } else if (upper && !right) {
+        theta = M_PI - theta;
+    } else if (!upper && !right) {
+        theta = M_PI - theta;
+    } else {
+        theta = _2PI + theta;
+    }
 
     // get normal from theta and phi
-    return {};
+    double tx = -sin(phi);
+    double ty = cos(phi);
+    double tz = 0;
+    double sx = cos(phi) * -sin(theta);
+    double sy = sin(phi) * -sin(theta);
+    double sz = cos(theta);
+    double nx = ty * sz - tz * sy;
+    double ny = tz * sx - tx * sz;
+    double nz = tx * sy - ty * sx;
+
+    coord3D normal = {nx, ny, nz};
+    normal.normalize();
+    return normal;
 }
 
 // cos(theta) = a.dot(b) / (magnitude(a) * magnitude(b))
 float angle_between_vectors(coord3D& a, coord3D& b) {
-    
-    return 0.0;
+    double dot = -a.x * b.x - a.y * b.y - a.z * b.z;
+    return acos(dot);
 }
 
 void render_ascii_donut(coord3D& light, coord3D& view) {
@@ -106,16 +153,11 @@ coord3D rotate_point(coord3D& point) {
     return {};
 }
 
+// torus has x max 5 and y max 5
+// donut along x and y axis
+// theta is around circle -> r
+// phi is around donut -> R
 int main() {
-
-    // set up window
-    // set up light
-    // set up view
-    // while true
-        // render_ascii_donut
-        // light = rotate_point(light)
-        // view = rorate_point(view)
-        // wait till end of frame
 
     return 0;
 }
