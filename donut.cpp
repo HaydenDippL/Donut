@@ -13,19 +13,6 @@
 
 using namespace std;
 
-// MODIFY
-const int FPS = 20;
-const double R = 4.0;
-const double r = 2.2;
-const int WINDOW_WIDTH_CHAR = 61;
-const int WINDOW_HEIGHT_CHAR = 31;
-
-// DO NOT MODIFY
-const int RAYS_PER_UNIT_X = 4;
-const int RAYS_PER_UNIT_Y = 2;
-const double WINDOW_HEIGHT = 2.5 * (R + r);
-const double WINDOW_WIDTH = 2.5 * (R + r);
-
 struct coord3D {
     double x;
     double y;
@@ -56,7 +43,33 @@ struct coord3D {
         y /= magnitude;
         z /= magnitude;
     }
+
+    coord3D rotate(const double (&matrix)[3][3]) const {
+        return {x * matrix[0][0] + y * matrix[1][0] + z * matrix[2][0],
+            x * matrix[0][1] + y * matrix[1][1] + z * matrix[2][1],
+            x * matrix[0][2] + y * matrix[1][2] + z * matrix[2][2]
+        };
+    }
+
+
 };
+
+// MODIFY
+const int FPS = 20;
+const double R = 4.0;
+const double r = 2.2;
+const int WINDOW_WIDTH_CHAR = 61;
+const int WINDOW_HEIGHT_CHAR = 31;
+
+const coord3D light = {0, 5, -15};
+const coord3D view = {0, 0, -10};
+
+// DO NOT MODIFY
+const int RAYS_PER_UNIT_X = 4;
+const int RAYS_PER_UNIT_Y = 2;
+const double WINDOW_HEIGHT = 2.5 * (R + r);
+const double WINDOW_WIDTH = 2.5 * (R + r);
+
 
 // (x^2 + y^2 + z^2 + R^2 + r^2)^2 -4R^2 * (x^2 + y^2) < 0
 bool point_inside_donut(coord3D p) {
@@ -125,7 +138,11 @@ coord3D vector_intersects_donut(coord3D& loc, coord3D& dir) {
     while (t < t2 && !point_inside_donut({loc.x + dir.x * t, loc.y + dir.y * t, loc.z + dir.z * t})) {
         t += jump;
     } if (t >= t2) {
-        return {numeric_limits<double>::infinity(), numeric_limits<double>::infinity(), numeric_limits<double>::infinity()};
+        return {
+            numeric_limits<double>::infinity(),
+            numeric_limits<double>::infinity(),
+            numeric_limits<double>::infinity()
+        };
     } while (point_inside_donut({loc.x + dir.x * t, loc.y + dir.y * t, loc.z + dir.z * t})) {
         t -= jump_jump;
     }
@@ -144,7 +161,11 @@ coord3D get_normal(coord3D& point) {
     static double _2PI = 2 * M_PI;
     static double _3_over_2_PI = 3 * M_PI_2;
     double phi = atan2(point.y, point.x);
-    double theta = asin(point.z / r);
+    // div can be slightly out of range [-1, 1];
+    double div = point.z / r;
+    if (div > 1.0) div = 1.0;
+    else if (div < -1.0) div = -1.0;
+    double theta = asin(div);
     bool upper = point.z > 0;
     bool right = point.x * point.x + point.y * point.y > R2;
     if (point.z == 0.0 && right) {
@@ -197,7 +218,7 @@ char light_to_char(double angle_degrees) {
     return light_chars[index];
 }
 
-char* render_ascii_donut(coord3D& light, coord3D& view, double A, double B) {
+char* render_ascii_donut(double A, double B, double C) {
     static const double x_min = -WINDOW_WIDTH_CHAR / (2 * RAYS_PER_UNIT_X);
     static const double x_max = -x_min;
     static const double y_min = -WINDOW_HEIGHT_CHAR / (2 * RAYS_PER_UNIT_Y);
@@ -209,22 +230,30 @@ char* render_ascii_donut(coord3D& light, coord3D& view, double A, double B) {
 
     const double cosA = cos(A);
     const double sinA = sin(A);
-    const double nsinA = -sinA;
     const double cosB = cos(B);
     const double sinB = sin(B);
-    const double nsinB = -sinB;
+    const double cosC = cos(C);
+    const double sinC = sin(C);
 
-    coord3D light_rotated = {
-        light.x * cosB - sinB * (light.y * cosA - light.z * sinA),
-        light.x * sinB + cosB * (light.y * cosA - light.z * sinA),
-        light.y * sinA + light.z * cosA
+    double rotation_matrix[3][3] = {
+        {cosB * cosC, sinA * sinB * cosC - cosA * sinC, cosA * sinB * cosC + sinA * sinC},
+        {cosB * sinC, sinA * sinB * sinC + cosA * cosC, cosA * sinB * sinC - sinA * cosC},
+        {-sinB, sinA * cosB, cosA * cosB}
     };
 
-    coord3D view_rotated = {
-        view.x * cosB - sinB * (view.y * cosA - view.z * sinA),
-        view.x * sinB + cosB * (view.y * cosA - view.z * sinA),
-        view.y * sinA + view.z * cosA
-    };
+    // coord3D light_rotated = {
+    //     light.x * cosB - sinB * (light.y * cosA - light.z * sinA),
+    //     light.x * sinB + cosB * (light.y * cosA - light.z * sinA),
+    //     light.y * sinA + light.z * cosA
+    // };
+    coord3D light_rotated = light.rotate(rotation_matrix);
+
+    // coord3D view_rotated = {
+    //     view.x * cosB - sinB * (view.y * cosA - view.z * sinA),
+    //     view.x * sinB + cosB * (view.y * cosA - view.z * sinA),
+    //     view.y * sinA + view.z * cosA
+    // };
+    coord3D view_rotated = view.rotate(rotation_matrix);
 
     coord3D view_dir_rotated = coord3D(0, 0, 0) - view_rotated;
     view_dir_rotated.normalize();
@@ -234,7 +263,12 @@ char* render_ascii_donut(coord3D& light, coord3D& view, double A, double B) {
     for (double y = y_max; y >= y_min; y -= y_inc) {
         for (double x = x_min; x <= x_max; x += x_inc) {
             double inside_paren = y * cosA - view.z * sinA;
-            coord3D view_loc_rotated = {x * cosB - sinB * inside_paren, x * sinB + cosB * inside_paren, y * sinA + view.z * cosA};
+            // coord3D view_loc_rotated = {
+            //     x * cosB - sinB * inside_paren,
+            //     x * sinB + cosB * inside_paren,
+            //     y * sinA + view.z * cosA
+            // };
+            coord3D view_loc_rotated = coord3D(x, y, view.z).rotate(rotation_matrix);
 
             coord3D view_intersect_point = vector_intersects_donut(view_loc_rotated, view_dir_rotated);
             bool vector_intersecting_donut = view_intersect_point.z != numeric_limits<double>::infinity();
@@ -246,13 +280,17 @@ char* render_ascii_donut(coord3D& light, coord3D& view, double A, double B) {
             coord3D light_dir_to_donut = view_intersect_point - light_rotated;
             light_dir_to_donut.normalize();
             coord3D light_intersect_point = vector_intersects_donut(light_rotated, light_dir_to_donut);
-            if (light_intersect_point.x == numeric_limits<double>::infinity() || !(view_intersect_point == light_intersect_point)) {
+            if (light_intersect_point.x == numeric_limits<double>::infinity() ||
+                !(view_intersect_point == light_intersect_point)) {
                 buffer[i++] = '.';
                 continue;
             }
 
             coord3D normal = get_normal(view_intersect_point);
             double angle_degrees = angle_between_vectors(normal, light_dir_to_donut) * to_degrees;
+            if (isnan(angle_degrees)) {
+                printf("(%.2f, %.1f)", x, y);
+            }
             buffer[i++] = light_to_char(angle_degrees);
         } buffer[i++] = '\n';
     } buffer[i] = '\0';
@@ -272,19 +310,18 @@ chrono::milliseconds get_time() {
 // phi is around donut -> R
 int main() {
     static const auto ms_in_frame = chrono::milliseconds(1000 / FPS);
-    static const double inc_A = 3.0 * M_PI / 180.0;
-    static const double inc_B = 2.0 * M_PI / 180.0;
+    static const double inc_yaw = 6.0 * M_PI / 180.0;
+    static const double inc_pitch = 2.5 * M_PI / 180.0;
+    static const double inc_roll = 0.0 * M_PI / 180.0;
     static const double _2PI = 2.0 * M_PI;
-    
-    coord3D light = {0, 5, -15};
-    coord3D view = {0, 0, -10};
-    double A = 0.0;
-    double B = 0.0;
+
+    double yaw = 0.0;
+    double pitch = 0.0;
+    double roll = 0.0;
     int frame = 1;
     while (true) {
         chrono::milliseconds start_frame_ms = get_time();
-        // clear screen
-        char* donut = render_ascii_donut(light, view, A, B);
+        char* donut = render_ascii_donut(yaw, pitch, roll);
         chrono::milliseconds end_render_ms = get_time();
         chrono::milliseconds render_duration_ms = end_render_ms - start_frame_ms;
         chrono::milliseconds sleep_duration_ms = ms_in_frame - render_duration_ms;
@@ -294,10 +331,12 @@ int main() {
         cout << "Frame: " << frame++ << "\n";
         cout << donut;
 
-        A += inc_A;
-        B += inc_B;
-        if (A > _2PI) A -= _2PI;
-        if (B > _2PI) B -= _2PI;
+        yaw += inc_yaw;
+        pitch += inc_pitch;
+        roll += inc_roll;
+        if (yaw > _2PI) yaw -= _2PI;
+        if (pitch > _2PI) pitch -= _2PI;
+        if (roll > _2PI) roll -= _2PI;
     }
     
 
