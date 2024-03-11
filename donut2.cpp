@@ -2,6 +2,7 @@
 #include<cmath>
 #include<chrono>
 #include<iostream>
+#include<string>
 #include<limits>
 
 using namespace std;
@@ -24,9 +25,23 @@ struct coord3D {
     double y;
     double z;
 
+    coord3D(double x, double y, double z) : x(x), y(y), z(z) {}
+
     bool operator==(const coord3D other) const {
         const double tolerance = 1e-2;
         return abs(x - other.x) < tolerance && abs(y - other.y) < tolerance && abs(z - other.z) < tolerance;
+    }
+
+    coord3D operator-(const coord3D other) const {
+        return {x - other.x, y - other.y, z - other.z};
+    }
+
+    coord3D operator+(const coord3D other) const {
+        return {x + other.x, y + other.y, z + other.z};
+    }
+
+    double operator*(const coord3D other) const {
+        return x * other.x + y * other.y + z * other.z;
     }
 
     void normalize() {
@@ -138,19 +153,81 @@ coord3D get_normal(coord3D& point) {
 }
 
 // cos(theta) = a.dot(b) / (magnitude(a) * magnitude(b))
+// requires two normalized vectors
 float angle_between_vectors(coord3D& a, coord3D& b) {
     double dot = -a.x * b.x - a.y * b.y - a.z * b.z;
     return acos(dot);
 }
 
-void render_ascii_donut(coord3D& light, coord3D& view) {
-
+char light_to_char(double angle_degrees) {
+    static const string light_chars = ".,-~:;=!*#$@";
+    static const int num_light_chars = light_chars.size();
+    static const double scale = 90.0 / 11.9;
+    if (angle_degrees >= 90.0) return '.';
+    int index = int((90.0 - angle_degrees) / scale);
+    return light_chars[index];
 }
 
-// quarternion or rotation matrix
-coord3D rotate_point(coord3D& point) {
+void render_ascii_donut(coord3D& light, coord3D& view, double A, double B) {
+    static const double x_min = -WINDOW_WIDTH_CHAR / (2 * RAYS_PER_UNIT_X);
+    static const double x_max = -x_min;
+    static const double y_min = -WINDOW_HEIGHT_CHAR / (2 * RAYS_PER_UNIT_Y);
+    static const double y_max = -y_min;
+    static const double x_inc = 1.0 / RAYS_PER_UNIT_X;
+    static const double y_inc = 1.0 / RAYS_PER_UNIT_Y;
+    static const double to_degrees = 180.0 / M_PI;
 
-    return {};
+    const double cosA = cos(A);
+    const double sinA = sin(A);
+    const double nsinA = -sinA;
+    const double cosB = cos(B);
+    const double sinB = sin(B);
+    const double nsinB = -sinB;
+
+    coord3D light_rotated = {
+        light.x * cosB - sinB * (light.y * cosA - light.z * sinA),
+        light.x * sinB + cosB * (light.y * cosA - light.z * sinA),
+        light.y * sinA + light.z * cosA
+    };
+
+    coord3D view_rotated = {
+        view.x * cosB - sinB * (view.y * cosA - view.z * sinA),
+        view.x * sinB + cosB * (view.y * cosA - view.z * sinA),
+        view.y * sinA + view.z * cosA
+    };
+
+    coord3D view_dir_rotated = coord3D(0, 0, 0) - view_rotated;
+    view_dir_rotated.normalize();
+
+    char buffer[WINDOW_HEIGHT_CHAR * (WINDOW_WIDTH_CHAR + 1) + 1];
+    int i = 0;
+    for (double y = y_max; y >= y_min; y -= y_inc) {
+        for (double x = x_min; x <= x_max; x += x_inc) {
+            double inside_paren = y * cosA - view.z * sinA;
+            coord3D view_loc_rotated = {x * cosB - sinB * inside_paren, x * sinB - cosB * inside_paren, y * sinA + view.z * cosA};
+
+            coord3D view_intersect_point = vector_intersects_donut(view_loc_rotated, view_dir_rotated);
+            bool vector_intersecting_donut = view_intersect_point.z != numeric_limits<double>::infinity();
+            if (!vector_intersecting_donut) {
+                buffer[i++] = ' ';
+                continue;
+            }
+
+            coord3D light_dir_to_donut = view_intersect_point - light_rotated;
+            light_dir_to_donut.normalize();
+            coord3D light_intersect_point = vector_intersects_donut(light_rotated, light_dir_to_donut);
+            if (light_intersect_point.x == numeric_limits<double>::infinity() || !(view_intersect_point == light_intersect_point)) {
+                buffer[i++] = '.';
+                continue;
+            }
+
+            coord3D normal = get_normal(view_intersect_point);
+            double angle_degrees = angle_between_vectors(normal, light_dir_to_donut) * to_degrees;
+            buffer[i++] = light_to_char(angle_degrees);
+        } buffer[i++] = '\n';
+    } buffer[i] = '\0';
+
+    cout << buffer;
 }
 
 // torus has x max 5 and y max 5
@@ -158,6 +235,13 @@ coord3D rotate_point(coord3D& point) {
 // theta is around circle -> r
 // phi is around donut -> R
 int main() {
+
+    coord3D light = {0, 5, -15};
+    coord3D view = {0, 0, -10};
+    double A = 0.0;
+    double B = 0.0;
+
+    render_ascii_donut(light, view, A, B);
 
     return 0;
 }
