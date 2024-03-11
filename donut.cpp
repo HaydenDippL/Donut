@@ -1,3 +1,7 @@
+// TODO:
+// Seg Fault on frame 46 due to nan angle
+// Donut is not rotating
+
 #include<vector>
 #include<cmath>
 #include<chrono>
@@ -286,7 +290,8 @@ int main() {
         chrono::milliseconds sleep_duration_ms = ms_in_frame - render_duration_ms;
         if (sleep_duration_ms.count() > 0) this_thread::sleep_for(sleep_duration_ms);
         
-        if (frame++ > 1) system("clear");
+        if (frame > 1) system("clear");
+        cout << "Frame: " << frame++ << "\n";
         cout << donut;
 
         A += inc_A;
