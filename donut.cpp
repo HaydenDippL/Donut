@@ -1,7 +1,3 @@
-// TODO:
-// Seg Fault on frame 46 due to nan angle
-// Donut is not rotating
-
 #include<vector>
 #include<cmath>
 #include<chrono>
@@ -150,10 +146,6 @@ coord3D vector_intersects_donut(coord3D& loc, coord3D& dir) {
     return {loc.x + dir.x * t, loc.y + dir.y * t, loc.z + dir.z * t};
 }
 
-double distance(coord3D& a, coord3D& b) {
-    return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2) + pow(a.z - b.z, 2));
-}
-
 // https://web.cs.ucdavis.edu/~amenta/s12/findnorm.pdf
 coord3D get_normal(coord3D& point) {
     // estimate theta and phi
@@ -241,20 +233,8 @@ char* render_ascii_donut(double A, double B, double C) {
         {-sinB, sinA * cosB, cosA * cosB}
     };
 
-    // coord3D light_rotated = {
-    //     light.x * cosB - sinB * (light.y * cosA - light.z * sinA),
-    //     light.x * sinB + cosB * (light.y * cosA - light.z * sinA),
-    //     light.y * sinA + light.z * cosA
-    // };
     coord3D light_rotated = light.rotate(rotation_matrix);
-
-    // coord3D view_rotated = {
-    //     view.x * cosB - sinB * (view.y * cosA - view.z * sinA),
-    //     view.x * sinB + cosB * (view.y * cosA - view.z * sinA),
-    //     view.y * sinA + view.z * cosA
-    // };
     coord3D view_rotated = view.rotate(rotation_matrix);
-
     coord3D view_dir_rotated = coord3D(0, 0, 0) - view_rotated;
     view_dir_rotated.normalize();
 
@@ -267,7 +247,7 @@ char* render_ascii_donut(double A, double B, double C) {
             //     x * cosB - sinB * inside_paren,
             //     x * sinB + cosB * inside_paren,
             //     y * sinA + view.z * cosA
-            // };
+            // }
             coord3D view_loc_rotated = coord3D(x, y, view.z).rotate(rotation_matrix);
 
             coord3D view_intersect_point = vector_intersects_donut(view_loc_rotated, view_dir_rotated);
@@ -288,9 +268,6 @@ char* render_ascii_donut(double A, double B, double C) {
 
             coord3D normal = get_normal(view_intersect_point);
             double angle_degrees = angle_between_vectors(normal, light_dir_to_donut) * to_degrees;
-            if (isnan(angle_degrees)) {
-                printf("(%.2f, %.1f)", x, y);
-            }
             buffer[i++] = light_to_char(angle_degrees);
         } buffer[i++] = '\n';
     } buffer[i] = '\0';
@@ -318,7 +295,6 @@ int main() {
     double yaw = 0.0;
     double pitch = 0.0;
     double roll = 0.0;
-    int frame = 1;
     while (true) {
         chrono::milliseconds start_frame_ms = get_time();
         char* donut = render_ascii_donut(yaw, pitch, roll);
@@ -327,8 +303,7 @@ int main() {
         chrono::milliseconds sleep_duration_ms = ms_in_frame - render_duration_ms;
         if (sleep_duration_ms.count() > 0) this_thread::sleep_for(sleep_duration_ms);
         
-        if (frame > 1) system("clear");
-        cout << "Frame: " << frame++ << "\n";
+        system("clear");
         cout << donut;
 
         yaw += inc_yaw;
