@@ -243,11 +243,6 @@ char* render_ascii_donut(double A, double B, double C) {
     for (double y = y_max; y >= y_min; y -= y_inc) {
         for (double x = x_min; x <= x_max; x += x_inc) {
             double inside_paren = y * cosA - view.z * sinA;
-            // coord3D view_loc_rotated = {
-            //     x * cosB - sinB * inside_paren,
-            //     x * sinB + cosB * inside_paren,
-            //     y * sinA + view.z * cosA
-            // }
             coord3D view_loc_rotated = coord3D(x, y, view.z).rotate(rotation_matrix);
 
             coord3D view_intersect_point = vector_intersects_donut(view_loc_rotated, view_dir_rotated);
