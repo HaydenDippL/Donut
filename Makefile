@@ -3,4 +3,4 @@ run: build
 build:
 	g++ donut.cpp -o donut
 clean:
-	rm -f donut
+	rm -f donut donut2
