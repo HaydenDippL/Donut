@@ -51,21 +51,42 @@ struct coord3D {
 
 };
 
-// MODIFY
-const int FPS = 20;
+// DONUT DEFINITION ---------------------------------------------
 const double R = 4.0;
 const double r = 2.2;
+// ((x^2 + y^2)^0.5 - R) + z^2 = r^2
+// x = (R + r * cos(theta)) * cos(phi)
+// y = (R + r * cos(theta)) * sin(phi)
+// z = r * sin(theta)
+// --------------------------------------------------------------
+
+
+
+
+// MODIFY -------------------------------------------------------
+const int FPS = 20;
 const int WINDOW_WIDTH_CHAR = 61;
 const int WINDOW_HEIGHT_CHAR = 31;
-
+// light and view position to donut facing you at (0, 0, 0)
 const coord3D light = {0, 5, -15};
 const coord3D view = {0, 0, -10};
+// rotataion factors of donut
+const double inc_yaw = 6.0 * M_PI / 180.0;
+const double inc_pitch = 2.5 * M_PI / 180.0;
+const double inc_roll = 0.0 * M_PI / 180.0;
+// --------------------------------------------------------------
 
-// DO NOT MODIFY
+
+
+
+// DO NOT MODIFY ------------------------------------------------
 const int RAYS_PER_UNIT_X = 4;
 const int RAYS_PER_UNIT_Y = 2;
 const double WINDOW_HEIGHT = 2.5 * (R + r);
 const double WINDOW_WIDTH = 2.5 * (R + r);
+// --------------------------------------------------------------
+
+
 
 
 // Determines if point is inside donut according to
@@ -221,7 +242,7 @@ coord3D get_normal(coord3D& point) {
 
 // Calculates the angle between vectors according to
 // cos(theta) = a.dot(b) / (magnitude(a) * magnitude(b))
-// requires two normalized vectors!!!!!!!!!!
+// REQUIRES TWO NORMALIZED VECTORS!!!!!!!!!!
 float angle_between_vectors(coord3D& a, coord3D& b) {
     double dot = -a.x * b.x - a.y * b.y - a.z * b.z;
     return acos(dot);
@@ -332,10 +353,6 @@ chrono::milliseconds get_time() {
 int main() {
     static const auto ms_in_frame = chrono::milliseconds(1000 / FPS);
     static const double _2PI = 2.0 * M_PI;
-    // MODIFY
-    static const double inc_yaw = 6.0 * M_PI / 180.0;
-    static const double inc_pitch = 2.5 * M_PI / 180.0;
-    static const double inc_roll = 0.0 * M_PI / 180.0;
 
     double yaw = 0.0;
     double pitch = 0.0;
