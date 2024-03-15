@@ -30,18 +30,18 @@ This function creates the string of the donut at any given yaw ($\alpha$), pitch
 
 $$
 \left[\begin{matrix}
-cos(\alpha) & -sin(\alpha) & 0\\
-sin(\alpha) & cos(\alpha) & 0\\
+cos(\alpha) & -sin(\alpha) & 0\newline
+sin(\alpha) & cos(\alpha) & 0\newline
 0 & 0 & 1
 \end{matrix}\right]
 \left[\begin{matrix}
-cos(\beta) & 0 & sin(\beta)\\
-0 & 1 & 0\\
+cos(\beta) & 0 & sin(\beta)\\newline
+0 & 1 & 0\\newline
 -sin(\beta) & 0 & cos(\beta)
 \end{matrix}\right]
 \left[\begin{matrix}
-1 & 0 & 0\\
-0 & cos(\gamma) & -sin(\gamma)\\
+1 & 0 & 0\\newline
+0 & cos(\gamma) & -sin(\gamma)\\newline
 0 & sin(\gamma) & cos(\gamma)
 \end{matrix}\right]
 $$
@@ -50,8 +50,8 @@ $$
 
 $$
 \left[\begin{matrix}
-cos(\alpha)cos(\beta) & cos(\alpha)cos(\beta)sin(\gamma)-sin(\alpha)cos(\gamma) & cos(\alpha)sin(\beta)cos(\gamma)+sin(\alpha)sin(\gamma)\\
-sin(\alpha)cos(\beta) & sin(\alpha)cos(\beta)sin(\gamma)+cos(\alpha)cos(\gamma) & sin(\alpha)sin(\beta)cos(\gamma)+cos(\alpha)sin(\gamma)\\
+cos(\alpha)cos(\beta) & cos(\alpha)cos(\beta)sin(\gamma)-sin(\alpha)cos(\gamma) & cos(\alpha)sin(\beta)cos(\gamma)+sin(\alpha)sin(\gamma)\newline
+sin(\alpha)cos(\beta) & sin(\alpha)cos(\beta)sin(\gamma)+cos(\alpha)cos(\gamma) & sin(\alpha)sin(\beta)cos(\gamma)+cos(\alpha)sin(\gamma)\newline
 -sin(\beta) & cos(\beta)sin(\gamma) & cos(\beta)cos(\gamma)
 \end{matrix}\right]
 $$
@@ -112,22 +112,22 @@ The algoritm has to account for the case that it nevers hits the donut. To accom
 This function uses a cartesian point $(x,y,z)$ to estimate the parameterized variables $\theta$ and $\phi$.
 
 $$
-\theta = atan2(y, x)\\
+\theta = atan2(y, x)\newline
 \phi = asin2(z / r)
 $$
 
 Once we get these variables we can follow the equations provided by [UC-Davis's Normal of a Torus](https://web.cs.ucdavis.edu/~amenta/s12/findnorm.pdf) article for two tangent vectors at the surface of the torus.
 
 $$
-t=(-sin(\phi), cos(\phi), 0)\\
+t=(-sin(\phi), cos(\phi), 0)\newline
 s=(cos(\phi) * -sin(\theta), sin(\phi) * -sin(\theta), cos(\theta))
 $$
 
 Then we can take the [cross product](https://en.wikipedia.org/wiki/Cross_product) of these two equations to get the normal vector direction.
 
 $$
-n=(\\
-t.y * s.z - t.z * s.y,\\
-t.z * s.x - t.x * s.z,\\
-t.x * s.y - t.y * s.x\\)
+n=(\newline
+t.y * s.z - t.z * s.y,\newline
+t.z * s.x - t.x * s.z,\newline
+t.x * s.y - t.y * s.x\newline)
 $$
