@@ -23,8 +23,8 @@ function normalize(p) {
 function rotate(p, matrix) {
     return {
         x: p.x * matrix[0].x + p.y * matrix[1].x + p.z * matrix[2].x,
-        x: p.x * matrix[0].y + p.y * matrix[1].y + p.z * matrix[2].y,
-        x: p.x * matrix[0].z + p.y * matrix[1].z + p.z * matrix[2].z,
+        y: p.x * matrix[0].y + p.y * matrix[1].y + p.z * matrix[2].y,
+        z: p.x * matrix[0].z + p.y * matrix[1].z + p.z * matrix[2].z,
     }
 }
 
@@ -62,7 +62,7 @@ function vector_intersects_donut(loc, dir) {
     // x = loc.x + dir.x * t
     // y = loc.y + dir.y * t
     // z = loc.z + dir.z * t
-    let t1 = Infinity, t2 = -Infinity
+    let t1 = Infinity, t2 = Infinity
 
     function min2(t) {
         if (t < t1) {
@@ -113,7 +113,7 @@ function vector_intersects_donut(loc, dir) {
         t -= jump_jump
     }
 
-    return {x: loc.x + dir.x * t, y: loc.y + dir.y * t, z: loc.z + diz.z * t}
+    return {x: loc.x + dir.x * t, y: loc.y + dir.y * t, z: loc.z + dir.z * t}
 }
 
 const R2 = R * R
@@ -158,21 +158,21 @@ function angle_between_vectors(a, b) {
 }
 
 const light_chars = ".,-~:;=!*#$@"
-const scale = 90.0 / (len(light_chars) - 0.1)
+const scale = 90.0 / (light_chars.length - 0.1)
 function light_to_char(angle_degrees) {
     if (angle_degrees >= 90.0) return '.'
-    const index = int((90.0 - angle_degrees) / scale)
+    const index = Math.floor((90.0 - angle_degrees) / scale)
     return light_chars[index]
 }
 
-const x_min = -WINDOW_WIDTH_CHAR / (2.0 * RAYS_PER_UNIT_X)
+const x_min = -7 // Math.floor(-WINDOW_WIDTH_CHAR / (2.0 * RAYS_PER_UNIT_X))
 const x_max = -x_min
-const y_min = -WINDOW_HEIGHT_CHAR / (2.0 * RAYS_PER_UNIT_Y)
+const y_min = -7 // Math.floor(-WINDOW_HEIGHT_CHAR / (2.0 * RAYS_PER_UNIT_Y))
 const y_max = -y_min
 const x_inc = 1.0 / RAYS_PER_UNIT_X
 const y_inc = 1.0 / RAYS_PER_UNIT_Y
 const to_degrees = 180.0 / Math.PI
-const total_chars = WINDOW_HEIGHT * (WINDOW_WIDTH_CHAR + 1)
+const total_chars = WINDOW_HEIGHT_CHAR * (WINDOW_WIDTH_CHAR + 1)
 function render_ascii_donut(A, B, C) {
     const cosA = Math.cos(A)
     const sinA = Math.sin(A)
@@ -184,18 +184,17 @@ function render_ascii_donut(A, B, C) {
     const rotation_matrix = [
         {x: cosB * cosC, y: sinA * sinB * cosC - cosA * sinC, z: cosA * sinB * cosC + sinA * sinC},
         {x: cosB * sinC, y: sinA * sinB * sinC + cosA * cosC, z: cosA * sinB * sinC - sinA * cosC},
-        {x: -sinB, x: sinA * cosB, x: cosA * cosB}
+        {x: -sinB, y: sinA * cosB, z: cosA * cosB}
     ]
 
-    const light_rotated = rotate(light, matrix)
+    const light_rotated = rotate(light, rotation_matrix)
     const view_rotated = rotate(view, rotation_matrix)
-    const view_dir_rotated = {x: -view_rotated.x, y: -view_rotated.y, z: -view_rotated.z}
+    const view_dir_rotated = normalize({x: -view_rotated.x, y: -view_rotated.y, z: -view_rotated.z})
 
     let buffer = new Array(total_chars)
     let i = 0;
     for (let y = y_max; y >= y_min; y -= y_inc) {
         for (let x = x_min; x <= x_max; x += x_inc) {
-            const inside_paren = y * cosA - view.z * sinA
             const view_loc_rotated = rotate({x: x, y: y, z: view.z}, rotation_matrix)
             
             const view_intersect_point = vector_intersects_donut(view_loc_rotated, view_dir_rotated)
@@ -218,3 +217,37 @@ function render_ascii_donut(A, B, C) {
         } buffer[i++] = '\n'
     } return buffer.join('')
 }
+
+async function animate_donut() {
+    const ms_in_frame = 1000.0 / FPS
+    const inc_yaw = 6.0 * Math.PI / 180.0
+    const inc_pitch = 2.5 * Math.PI / 180.0
+    const inc_roll = 0.0 * Math.PI / 180.0
+    
+    let yaw = 0.0
+    let pitch = 0.0
+    let roll = 0.0
+
+    while (true) {
+        const start_frame_ms = Date.now()
+        const donut = render_ascii_donut(yaw, pitch, roll)
+        const end_render_ms = Date.now()
+
+        const render_time_ms = end_render_ms - start_frame_ms
+        const sleep_time_ms = ms_in_frame - render_time_ms
+
+        if (sleep_time_ms > 0) await new Promise(resolve => setTimeout(resolve, sleep_time_ms))
+
+        console.clear()
+        console.log(donut)
+
+        yaw += inc_yaw;
+        pitch += inc_pitch;
+        roll += inc_roll;
+        if (yaw > _2PI) yaw -= _2PI;
+        if (pitch > _2PI) pitch -= _2PI;
+        if (roll > _2PI) roll -= _2PI;
+    }
+}
+
+animate_donut()
